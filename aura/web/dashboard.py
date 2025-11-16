@@ -79,37 +79,68 @@ class AuraDashboard:
             recent_asset = max(assets, key=lambda x: x.get('last_updated', ''))
             most_recent = self.time_ago(recent_asset.get('last_updated', ''))
 
-        # Generate asset rows
+        # Separate assets by type
+        servers = [a for a in assets if a['type'] in ['system', 'server']]
+        ports = [a for a in assets if a['type'] == 'port']
+        processes = [a for a in assets if a['type'] == 'process']
+        containers = [a for a in assets if a['type'] == 'container']
+
+        # Generate servers section
         rows_html = ""
-        for asset in assets:
-            cpu_class = "critical" if asset['cpu'] >= 85 else "warning" if asset['cpu'] >= 70 else "healthy"
-            mem_class = "critical" if asset['memory'] >= 85 else "warning" if asset['memory'] >= 70 else "healthy"
-            disk_class = "critical" if asset['disk'] >= 85 else "warning" if asset['disk'] >= 70 else "healthy"
 
-            update_time = self.time_ago(asset['last_updated'])
-            update_class = "healthy" if "second" in update_time or "1 minute" in update_time else "warning" if "minute" in update_time else "critical"
+        if servers:
+            rows_html += '<tr style="background: #f3f4f6;"><td colspan="7" style="font-weight: bold; padding: 10px;">🖥️ SERVERS</td></tr>'
+            for asset in servers:
+                cpu_class = "critical" if asset['cpu'] >= 85 else "warning" if asset['cpu'] >= 70 else "healthy"
+                mem_class = "critical" if asset['memory'] >= 85 else "warning" if asset['memory'] >= 70 else "healthy"
+                disk_class = "critical" if asset['disk'] >= 85 else "warning" if asset['disk'] >= 70 else "healthy"
 
-            rows_html += f"""
-            <tr onclick="viewAAV('{asset['file_path']}')" style="cursor: pointer;">
-                <td>
-                    <strong>{asset['name']}</strong><br>
-                    <small style="color: #666;">{asset['type']}</small><br>
-                    <small class="{update_class}" style="font-size: 11px;">⏰ {update_time}</small>
-                </td>
-                <td class="{cpu_class}">{asset['cpu']:.1f}%</td>
-                <td class="{mem_class}">{asset['memory']:.1f}%</td>
-                <td class="{disk_class}">{asset['disk']:.1f}%</td>
-                <td>{asset['load']:.2f}</td>
-                <td>{asset['network']}</td>
-                <td>
-                    <small>{update_time}</small><br>
-                    <button onclick="event.stopPropagation(); viewAAV('{asset['file_path']}')"
-                            style="margin-top: 5px; padding: 3px 8px; background: #3b82f6; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px;">
-                        View AAV
-                    </button>
-                </td>
-            </tr>
-            """
+                # Status emoji
+                status_emoji = "🔴" if asset['cpu'] >= 85 or asset['memory'] >= 85 else "⚠️" if asset['cpu'] >= 70 or asset['memory'] >= 70 else "✅"
+
+                rows_html += f"""
+                <tr onclick="viewAAV('{asset['file_path']}')" style="cursor: pointer;">
+                    <td>
+                        <span style="font-size: 20px;">{status_emoji}</span>
+                        <strong style="margin-left: 10px;">{asset['name']}</strong>
+                    </td>
+                    <td class="{cpu_class}" style="font-size: 16px;">{asset['cpu']:.1f}%</td>
+                    <td class="{mem_class}" style="font-size: 16px;">{asset['memory']:.1f}%</td>
+                    <td class="{disk_class}" style="font-size: 16px;">{asset['disk']:.1f}%</td>
+                    <td style="font-size: 16px;">{asset['load']:.2f}</td>
+                    <td style="font-size: 16px;">{asset['network']}</td>
+                    <td>
+                        <button onclick="event.stopPropagation(); viewAAV('{asset['file_path']}')"
+                                style="padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 13px; font-weight: 600;">
+                            📄 Details
+                        </button>
+                    </td>
+                </tr>
+                """
+
+        if ports:
+            rows_html += '<tr style="background: #f3f4f6;"><td colspan="7" style="font-weight: bold; padding: 10px;">🔌 OPEN PORTS ({len(ports)} services)</td></tr>'
+            for asset in ports[:10]:  # Show top 10 ports only
+                service_emoji = "🌐" if "http" in asset['name'].lower() else "🔐" if "ssh" in asset['name'].lower() else "💾" if "mongo" in asset['name'].lower() or "mysql" in asset['name'].lower() else "📡"
+
+                rows_html += f"""
+                <tr onclick="viewAAV('{asset['file_path']}')" style="cursor: pointer;">
+                    <td>
+                        <span style="font-size: 20px;">{service_emoji}</span>
+                        <strong style="margin-left: 10px;">{asset['name']}</strong>
+                    </td>
+                    <td colspan="5" style="color: #666;">Network: {asset['network']} connections</td>
+                    <td>
+                        <button onclick="event.stopPropagation(); viewAAV('{asset['file_path']}')"
+                                style="padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 13px; font-weight: 600;">
+                            📄 Details
+                        </button>
+                    </td>
+                </tr>
+                """
+
+            if len(ports) > 10:
+                rows_html += f'<tr><td colspan="7" style="text-align: center; color: #666; padding: 10px;">+ {len(ports) - 10} more ports...</td></tr>'
 
         html = f"""
 <!DOCTYPE html>
@@ -386,30 +417,30 @@ class AuraDashboard:
 <body>
     <div class="container">
         <div class="header">
-            <h1>🌟 Aura Dashboard</h1>
-            <p>Real-time infrastructure monitoring</p>
+            <h1>🌟 Infrastructure Monitor</h1>
+            <p style="font-size: 18px; margin-top: 10px;">Simple view of your servers and services</p>
             <div style="margin-top: 15px;">
-                <span class="auto-refresh">🔄 Auto-refresh: 5s</span>
-                <span class="auto-refresh" style="margin-left: 10px;">⏰ Last update: {most_recent}</span>
+                <span class="auto-refresh">🔄 Updates every 5 seconds</span>
+                <span class="auto-refresh" style="margin-left: 10px;">⏰ Last check: {most_recent}</span>
             </div>
         </div>
 
         <div class="stats">
             <div class="stat-card">
-                <h3 class="stat-healthy">{total_assets}</h3>
-                <p>Total Assets</p>
+                <h3 class="stat-healthy">{len([a for a in assets if a['type'] in ['system', 'server']])}</h3>
+                <p>SERVERS</p>
             </div>
             <div class="stat-card">
                 <h3 class="stat-healthy">{healthy}</h3>
-                <p>Healthy</p>
+                <p>✅ RUNNING GOOD</p>
             </div>
             <div class="stat-card">
                 <h3 class="stat-warning">{warning}</h3>
-                <p>Warnings</p>
+                <p>⚠️ NEED ATTENTION</p>
             </div>
             <div class="stat-card">
                 <h3 class="stat-critical">{critical}</h3>
-                <p>Critical</p>
+                <p>🔴 PROBLEMS</p>
             </div>
         </div>
 
@@ -417,13 +448,13 @@ class AuraDashboard:
             <table>
                 <thead>
                     <tr>
-                        <th>Asset</th>
-                        <th>CPU</th>
-                        <th>Memory</th>
-                        <th>Disk</th>
-                        <th>Load</th>
-                        <th>Network</th>
-                        <th>Updated</th>
+                        <th style="font-size: 16px;">NAME</th>
+                        <th style="font-size: 16px;">CPU USAGE</th>
+                        <th style="font-size: 16px;">MEMORY</th>
+                        <th style="font-size: 16px;">DISK</th>
+                        <th style="font-size: 16px;">LOAD</th>
+                        <th style="font-size: 16px;">CONNECTIONS</th>
+                        <th style="font-size: 16px;">ACTION</th>
                     </tr>
                 </thead>
                 <tbody>
