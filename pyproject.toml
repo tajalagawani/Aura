@@ -1,0 +1,119 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aura-ai"
+version = "2.0.0"
+description = "Universal AI Asset Authority & Real-Time Context System"
+readme = "aura.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [
+    {name = "Aura Project", email = "hello@aura-ai.dev"}
+]
+keywords = ["ai", "infrastructure", "monitoring", "context", "devops", "automation"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS :: MacOS X",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: System :: Monitoring",
+    "Topic :: System :: Systems Administration",
+]
+
+dependencies = [
+    "psutil>=5.9.6",
+    "toml>=0.10.2",
+    "redis>=5.0.0",
+    "click>=8.1.7",
+    "pydantic>=2.5.0",
+    "python-dateutil>=2.8.2",
+    "aiofiles>=23.2.1",
+]
+
+[project.optional-dependencies]
+docker = [
+    "docker>=7.0.0",
+]
+kubernetes = [
+    "kubernetes>=28.1.0",
+]
+cloud = [
+    "boto3>=1.34.0",  # AWS
+    "google-cloud-compute>=1.14.0",  # GCP
+    "azure-mgmt-compute>=30.0.0",  # Azure
+]
+dashboard = [
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.24.0",
+    "websockets>=12.0",
+]
+dev = [
+    "pytest>=7.4.3",
+    "pytest-cov>=4.1.0",
+    "pytest-asyncio>=0.21.1",
+    "pytest-mock>=3.12.0",
+    "black>=23.11.0",
+    "flake8>=6.1.0",
+    "mypy>=1.7.0",
+    "isort>=5.12.0",
+    "pre-commit>=3.5.0",
+]
+all = [
+    "aura-ai[docker,kubernetes,cloud,dashboard]",
+]
+
+[project.scripts]
+aura = "aura.cli.main:cli"
+
+[project.urls]
+Homepage = "https://github.com/aura-project/aura"
+Documentation = "https://docs.aura-ai.dev"
+Repository = "https://github.com/aura-project/aura"
+"Bug Tracker" = "https://github.com/aura-project/aura/issues"
+
+[tool.setuptools]
+packages = ["aura"]
+
+[tool.black]
+line-length = 100
+target-version = ['py311']
+include = '\.pyi?$'
+
+[tool.isort]
+profile = "black"
+line_length = 100
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --cov=aura --cov-report=html --cov-report=term"
+asyncio_mode = "auto"
+
+[tool.coverage.run]
+source = ["aura"]
+omit = ["tests/*", "**/__init__.py"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]
