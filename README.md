@@ -6,16 +6,39 @@ Aura gives AI systems environmental awareness through lightweight sensors that m
 
 ## Quick Install
 
+### Local Installation
+
 ```bash
 # Clone the repository
-git clone <your-repo-url>
-cd aura
+git clone https://github.com/tajalagawani/Aura.git
+cd Aura
 
 # Run installer (does everything)
 ./install.sh
 ```
 
-That's it! The installer will:
+### VPS Deployment (with Web Dashboard)
+
+```bash
+# SSH to your VPS
+ssh root@your-vps-ip
+
+# Clone and deploy (includes web UI on port 8080)
+git clone https://github.com/tajalagawani/Aura.git && cd Aura && ./deploy-vps.sh
+```
+
+**VPS deployment includes:**
+- ✅ Real-time monitoring service (auto-starts on boot)
+- ✅ Web dashboard on port 8080
+- ✅ Automatic AAV file updates
+- ✅ Systemd services for reliability
+
+**Access dashboard:** `http://your-vps-ip:8080`
+
+See [VPS_DEPLOY.md](VPS_DEPLOY.md) for detailed VPS deployment guide.
+
+### What the Installer Does
+
 - ✅ Check Python 3.11+ requirement
 - ✅ Install Aura package
 - ✅ Create assets directory
