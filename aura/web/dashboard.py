@@ -61,6 +61,12 @@ class AuraDashboard:
         warning = sum(1 for a in assets if (a['cpu'] >= 70 or a['memory'] >= 80) and (a['cpu'] < 85 and a['memory'] < 90))
         critical = sum(1 for a in assets if a['cpu'] >= 85 or a['memory'] >= 90)
 
+        # Get most recent update time
+        most_recent = ""
+        if assets:
+            recent_asset = max(assets, key=lambda x: x.get('last_updated', ''))
+            most_recent = self.time_ago(recent_asset.get('last_updated', ''))
+
         # Generate asset rows
         rows_html = ""
         for asset in assets:
@@ -68,15 +74,22 @@ class AuraDashboard:
             mem_class = "critical" if asset['memory'] >= 85 else "warning" if asset['memory'] >= 70 else "healthy"
             disk_class = "critical" if asset['disk'] >= 85 else "warning" if asset['disk'] >= 70 else "healthy"
 
+            update_time = self.time_ago(asset['last_updated'])
+            update_class = "healthy" if "second" in update_time or "1 minute" in update_time else "warning" if "minute" in update_time else "critical"
+
             rows_html += f"""
             <tr>
-                <td><strong>{asset['name']}</strong><br><small>{asset['type']}</small></td>
+                <td>
+                    <strong>{asset['name']}</strong><br>
+                    <small style="color: #666;">{asset['type']}</small><br>
+                    <small class="{update_class}" style="font-size: 11px;">⏰ {update_time}</small>
+                </td>
                 <td class="{cpu_class}">{asset['cpu']:.1f}%</td>
                 <td class="{mem_class}">{asset['memory']:.1f}%</td>
                 <td class="{disk_class}">{asset['disk']:.1f}%</td>
                 <td>{asset['load']:.2f}</td>
                 <td>{asset['network']}</td>
-                <td><small>{self.time_ago(asset['last_updated'])}</small></td>
+                <td><small>{update_time}</small></td>
             </tr>
             """
 
@@ -209,7 +222,10 @@ class AuraDashboard:
         <div class="header">
             <h1>🌟 Aura Dashboard</h1>
             <p>Real-time infrastructure monitoring</p>
-            <span class="auto-refresh">🔄 Auto-refresh: 5s</span>
+            <div style="margin-top: 15px;">
+                <span class="auto-refresh">🔄 Auto-refresh: 5s</span>
+                <span class="auto-refresh" style="margin-left: 10px;">⏰ Last update: {most_recent}</span>
+            </div>
         </div>
 
         <div class="stats">
@@ -252,7 +268,8 @@ class AuraDashboard:
 
         <div class="footer">
             <p>Aura - Universal AI Asset Authority</p>
-            <p>Last refresh: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+            <p>🕒 Page refreshed: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} (updates every 5s)</p>
+            {f'<p>📊 Most recent data: {most_recent}</p>' if most_recent else ''}
         </div>
     </div>
 </body>
