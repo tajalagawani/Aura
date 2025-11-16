@@ -100,7 +100,7 @@ class ServicesSensor(BaseSensor):
 
         logger.info(f"ServicesSensor initialized for {asset_id}")
 
-    def collect(self) -> Dict[str, Any]:
+    async def collect(self) -> Dict[str, Any]:
         """
         Collect service health metrics.
 
@@ -131,7 +131,15 @@ class ServicesSensor(BaseSensor):
             }
 
         except Exception as e:
-            raise SensorError(f"Failed to collect service metrics: {e}")
+            logger.error(f"Service sensor collection failed: {e}")
+            # Return safe defaults on error
+            return {
+                "health_status": "unknown",
+                "version": "unknown",
+                "uptime_seconds": time.time() - self.start_time,
+                "dependencies": [],
+                "endpoint_metrics": [],
+            }
 
     def process(self, raw_data: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -240,6 +248,9 @@ class ServicesSensor(BaseSensor):
 
             return "healthy" if listening else "unhealthy"
 
+        except PermissionError:
+            logger.warning(f"Permission denied checking port {self.health_check_port}, assuming healthy")
+            return "healthy"
         except Exception as e:
             logger.warning(f"Port check failed: {e}")
             return "unknown"

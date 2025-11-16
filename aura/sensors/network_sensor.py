@@ -95,7 +95,7 @@ class NetworkSensor(BaseSensor):
 
         logger.info(f"NetworkSensor initialized for {asset_id}")
 
-    def collect(self) -> Dict[str, Any]:
+    async def collect(self) -> Dict[str, Any]:
         """
         Collect network metrics.
 
@@ -172,7 +172,48 @@ class NetworkSensor(BaseSensor):
                 "drops_out": net_io.dropout,
             }
 
+        except PermissionError:
+            logger.warning("Permission denied accessing network connections, returning basic I/O stats only")
+            # Return basic network I/O stats without connection details
+            try:
+                net_io = psutil.net_io_counters()
+                current_time = time.time()
+
+                bytes_sent_per_sec = 0.0
+                bytes_recv_per_sec = 0.0
+
+                if self.previous_net_io and self.previous_net_time > 0:
+                    time_delta = current_time - self.previous_net_time
+                    if time_delta > 0:
+                        sent_bytes = net_io.bytes_sent - self.previous_net_io['bytes_sent']
+                        recv_bytes = net_io.bytes_recv - self.previous_net_io['bytes_recv']
+                        bytes_sent_per_sec = sent_bytes / time_delta
+                        bytes_recv_per_sec = recv_bytes / time_delta
+
+                self.previous_net_io = {
+                    'bytes_sent': net_io.bytes_sent,
+                    'bytes_recv': net_io.bytes_recv,
+                }
+                self.previous_net_time = current_time
+
+                return {
+                    "connection_count": 0,
+                    "state_counts": {},
+                    "active_connections": [],
+                    "bytes_sent_per_sec": bytes_sent_per_sec,
+                    "bytes_recv_per_sec": bytes_recv_per_sec,
+                    "total_packets_sent": net_io.packets_sent,
+                    "total_packets_recv": net_io.packets_recv,
+                    "errors_in": net_io.errin,
+                    "errors_out": net_io.errout,
+                    "drops_in": net_io.dropin,
+                    "drops_out": net_io.dropout,
+                }
+            except Exception as fallback_error:
+                logger.error(f"Fallback network metrics failed: {fallback_error}")
+                raise SensorError(f"Failed to collect network metrics: {fallback_error}")
         except Exception as e:
+            logger.error(f"Network sensor collection failed: {e}")
             raise SensorError(f"Failed to collect network metrics: {e}")
 
     def process(self, raw_data: Dict[str, Any]) -> Dict[str, Any]:
