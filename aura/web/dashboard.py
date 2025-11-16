@@ -42,6 +42,7 @@ class AuraDashboard:
                     "disk": data.get('storage', {}).get('real_time', {}).get('disk_usage_percent', 0),
                     "load": data.get('compute', {}).get('real_time', {}).get('load_average', [0])[0] if data.get('compute', {}).get('real_time', {}).get('load_average') else 0,
                     "network": data.get('network', {}).get('real_time', {}).get('active_connections', 0),
+                    "file_path": str(aav_file.name),
                 }
 
                 assets.append(asset_info)
@@ -51,6 +52,17 @@ class AuraDashboard:
                 continue
 
         return assets
+
+    def get_aav_content(self, filename: str) -> str:
+        """Get raw AAV file content."""
+        try:
+            aav_file = self.assets_dir / filename
+            if not aav_file.exists():
+                return f"Error: File {filename} not found"
+
+            return aav_file.read_text()
+        except Exception as e:
+            return f"Error reading file: {e}"
 
     def generate_html(self, assets: List[Dict]) -> str:
         """Generate HTML dashboard."""
@@ -78,7 +90,7 @@ class AuraDashboard:
             update_class = "healthy" if "second" in update_time or "1 minute" in update_time else "warning" if "minute" in update_time else "critical"
 
             rows_html += f"""
-            <tr>
+            <tr onclick="viewAAV('{asset['file_path']}')" style="cursor: pointer;">
                 <td>
                     <strong>{asset['name']}</strong><br>
                     <small style="color: #666;">{asset['type']}</small><br>
@@ -89,7 +101,13 @@ class AuraDashboard:
                 <td class="{disk_class}">{asset['disk']:.1f}%</td>
                 <td>{asset['load']:.2f}</td>
                 <td>{asset['network']}</td>
-                <td><small>{update_time}</small></td>
+                <td>
+                    <small>{update_time}</small><br>
+                    <button onclick="event.stopPropagation(); viewAAV('{asset['file_path']}')"
+                            style="margin-top: 5px; padding: 3px 8px; background: #3b82f6; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px;">
+                        View AAV
+                    </button>
+                </td>
             </tr>
             """
 
@@ -209,12 +227,160 @@ class AuraDashboard:
             display: inline-block;
             margin-top: 10px;
         }}
+
+        /* Modal styles */
+        .modal {{
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.7);
+        }}
+        .modal-content {{
+            background-color: white;
+            margin: 2% auto;
+            padding: 0;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 1200px;
+            height: 90%;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }}
+        .modal-header {{
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 10px 10px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }}
+        .modal-header h2 {{
+            margin: 0;
+            font-size: 20px;
+        }}
+        .close {{
+            color: white;
+            font-size: 35px;
+            font-weight: bold;
+            cursor: pointer;
+            line-height: 1;
+        }}
+        .close:hover {{
+            opacity: 0.8;
+        }}
+        .modal-body {{
+            padding: 20px;
+            overflow-y: auto;
+            flex: 1;
+        }}
+        .aav-content {{
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-x: auto;
+        }}
+        .copy-btn {{
+            background: #10b981;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 10px 0;
+        }}
+        .copy-btn:hover {{
+            background: #059669;
+        }}
     </style>
     <script>
-        // Auto-refresh every 5 seconds
-        setTimeout(function() {{
-            window.location.reload();
-        }}, 5000);
+        let autoRefreshTimer;
+
+        // Auto-refresh every 5 seconds (only when modal is closed)
+        function startAutoRefresh() {{
+            autoRefreshTimer = setTimeout(function() {{
+                window.location.reload();
+            }}, 5000);
+        }}
+
+        function stopAutoRefresh() {{
+            if (autoRefreshTimer) {{
+                clearTimeout(autoRefreshTimer);
+            }}
+        }}
+
+        // Start auto-refresh on page load
+        window.onload = function() {{
+            startAutoRefresh();
+        }};
+
+        // View AAV file
+        function viewAAV(filename) {{
+            stopAutoRefresh();
+
+            const modal = document.getElementById('aavModal');
+            const modalTitle = document.getElementById('modalTitle');
+            const aavContent = document.getElementById('aavContent');
+
+            modalTitle.textContent = '📄 ' + filename;
+            aavContent.textContent = 'Loading...';
+            modal.style.display = 'block';
+
+            fetch('/aav/' + filename)
+                .then(response => response.text())
+                .then(data => {{
+                    aavContent.textContent = data;
+                }})
+                .catch(error => {{
+                    aavContent.textContent = 'Error loading AAV file: ' + error;
+                }});
+        }}
+
+        // Close modal
+        function closeModal() {{
+            document.getElementById('aavModal').style.display = 'none';
+            startAutoRefresh();
+        }}
+
+        // Copy AAV content
+        function copyAAV() {{
+            const aavContent = document.getElementById('aavContent');
+            navigator.clipboard.writeText(aavContent.textContent).then(function() {{
+                const btn = event.target;
+                const originalText = btn.textContent;
+                btn.textContent = '✅ Copied!';
+                setTimeout(function() {{
+                    btn.textContent = originalText;
+                }}, 2000);
+            }});
+        }}
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {{
+            const modal = document.getElementById('aavModal');
+            if (event.target == modal) {{
+                closeModal();
+            }}
+        }}
+
+        // Close modal with Escape key
+        document.addEventListener('keydown', function(event) {{
+            if (event.key === 'Escape') {{
+                closeModal();
+            }}
+        }});
     </script>
 </head>
 <body>
@@ -272,6 +438,20 @@ class AuraDashboard:
             {f'<p>📊 Most recent data: {most_recent}</p>' if most_recent else ''}
         </div>
     </div>
+
+    <!-- AAV Viewer Modal -->
+    <div id="aavModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">AAV File Viewer</h2>
+                <span class="close" onclick="closeModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <button class="copy-btn" onclick="copyAAV()">📋 Copy to Clipboard</button>
+                <div class="aav-content" id="aavContent">Loading...</div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
 """
@@ -302,20 +482,37 @@ class AuraDashboard:
         try:
             # Read request
             request = await reader.read(1024)
+            request_line = request.decode('utf-8').split('\r\n')[0]
 
-            # Get assets
+            # Parse request
+            parts = request_line.split(' ')
+            if len(parts) >= 2:
+                method = parts[0]
+                path = parts[1]
+
+                # Handle AAV file requests
+                if path.startswith('/aav/'):
+                    filename = path[5:]  # Remove '/aav/' prefix
+                    aav_content = self.get_aav_content(filename)
+
+                    response = f"HTTP/1.1 200 OK\r\nContent-Type: text/plain; charset=utf-8\r\n\r\n{aav_content}"
+                    writer.write(response.encode('utf-8'))
+                    await writer.drain()
+                    return
+
+            # Default: serve dashboard
             assets = self.get_all_assets()
-
-            # Generate HTML
             html = self.generate_html(assets)
 
-            # Send response
-            response = f"HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n{html}"
-            writer.write(response.encode())
+            response = f"HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\n\r\n{html}"
+            writer.write(response.encode('utf-8'))
             await writer.drain()
 
         except Exception as e:
             print(f"Error handling request: {e}")
+            error_response = f"HTTP/1.1 500 Internal Server Error\r\nContent-Type: text/plain\r\n\r\nError: {e}"
+            writer.write(error_response.encode())
+            await writer.drain()
         finally:
             writer.close()
             await writer.wait_closed()
