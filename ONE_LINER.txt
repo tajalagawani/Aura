@@ -1,0 +1,68 @@
+═══════════════════════════════════════════════════════════════
+🚀 AURA VPS DEPLOYMENT - ONE COMMAND
+═══════════════════════════════════════════════════════════════
+
+STEP 1: SSH to your VPS
+------------------------
+ssh root@92.112.181.127
+
+
+STEP 2: Copy-paste this ONE command:
+-------------------------------------
+cd /root && rm -rf Aura && git clone https://github.com/tajalagawani/Aura.git && cd Aura && chmod +x deploy-vps.sh && ./deploy-vps.sh
+
+
+STEP 3: Wait ~1 minute for deployment
+--------------------------------------
+The script will:
+✅ Install Python 3.11+ (if needed)
+✅ Install Aura
+✅ Create monitoring service (runs 24/7)
+✅ Create web dashboard (port 8080)
+✅ Start everything automatically
+
+
+STEP 4: Open dashboard in browser
+----------------------------------
+http://92.112.181.127:8080
+
+
+═══════════════════════════════════════════════════════════════
+That's it! You'll see a beautiful dashboard with live metrics!
+═══════════════════════════════════════════════════════════════
+
+
+VERIFICATION COMMANDS (run on VPS):
+-----------------------------------
+# Check services are running
+sudo systemctl status aura-monitor
+sudo systemctl status aura-dashboard
+
+# View logs
+sudo journalctl -u aura-monitor -f
+sudo journalctl -u aura-dashboard -f
+
+# Test dashboard locally
+curl http://localhost:8080
+
+# View AAV files
+cat /var/lib/aura/assets/*.aav
+
+
+TROUBLESHOOTING:
+----------------
+If dashboard doesn't load:
+
+1. Check firewall (open port 8080):
+   sudo ufw allow 8080/tcp
+   sudo ufw reload
+
+2. Check services are running:
+   sudo systemctl status aura-dashboard
+
+3. Check port is listening:
+   sudo netstat -tulpn | grep 8080
+
+4. Restart services:
+   sudo systemctl restart aura-monitor
+   sudo systemctl restart aura-dashboard
