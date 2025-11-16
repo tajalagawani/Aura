@@ -27,7 +27,7 @@ LOG_DIR="/var/log/aura"
 SERVICE_USER="aura"
 WEB_PORT=8080
 GITHUB_REPO="https://github.com/tajalagawani/Aura.git"
-GITHUB_BRANCH="main"
+GITHUB_BRANCH="master"
 
 # Feature flags
 ENABLE_FIREWALL=true
@@ -197,7 +197,10 @@ clone_repository() {
     rm -rf $INSTALL_DIR/*
 
     # Clone fresh copy
-    git clone --depth 1 -b $GITHUB_BRANCH $GITHUB_REPO $INSTALL_DIR
+    git clone --depth 1 -b $GITHUB_BRANCH $GITHUB_REPO $INSTALL_DIR 2>&1 || {
+        log "Trying default branch..."
+        git clone --depth 1 $GITHUB_REPO $INSTALL_DIR
+    }
 
     chown -R $SERVICE_USER:$SERVICE_USER $INSTALL_DIR
 
@@ -328,11 +331,11 @@ log() {
 cd "$INSTALL_DIR" || exit 1
 
 # Fetch latest changes
-git fetch origin main
+git fetch origin master
 
 # Compare versions
 LOCAL=$(git rev-parse HEAD)
-REMOTE=$(git rev-parse origin/main)
+REMOTE=$(git rev-parse origin/master)
 
 if [ "$LOCAL" = "$REMOTE" ]; then
     log "✅ Already up to date"
@@ -342,7 +345,7 @@ fi
 log "🔄 New version detected, updating..."
 
 # Pull changes
-git pull origin main
+git pull origin master
 
 # Reinstall package
 python3 -m pip install -e . --break-system-packages --quiet
