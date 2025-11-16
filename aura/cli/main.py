@@ -25,6 +25,7 @@ import click
 
 from aura import __version__
 from aura.ai.context_client import AuraClient
+from aura.cli.scan import scan
 from aura.core.aav import AAVFile
 from aura.guardian.validator import AAVValidator
 
@@ -102,6 +103,10 @@ def cli() -> None:
     Provides real-time infrastructure context for AI agents.
     """
     pass
+
+
+# Add scan command group
+cli.add_command(scan)
 
 
 @cli.command()
