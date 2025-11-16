@@ -68,7 +68,7 @@ echo ""
 
 step "Installing Aura package..."
 cd $INSTALL_DIR
-sudo -u $SERVICE_USER python3 -m pip install --user -e . --quiet
+python3 -m pip install -e . --break-system-packages --quiet
 success "Package installed"
 echo ""
 
